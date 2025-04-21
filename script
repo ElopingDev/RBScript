@@ -1,4 +1,4 @@
---[[ ESP Menu Script - Moved createBoxFrames MUCH earlier ]]
+--[[ ESP Menu Script - Camlock with Instant Snapping ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,15 +17,15 @@ local featureColors = { ["ESP Box"] = Color3.fromRGB(128, 0, 128), ["Chams"] = C
 local BOX_THICKNESS = 2; local BOX_SCALING_BASE = 3000; local BOX_MIN_SIZE = 30; local BOX_MAX_SIZE = 180
 local flySpeed = 50; local flyKeybind = Enum.KeyCode.F
 local camlockFOV = 100; local camlockTarget = nil
-local CAMERA_OFFSET = Vector3.new(0, 3, 10)
-local CAMLOCK_LERP_SPEED = 0.2
+local CAMERA_OFFSET = Vector3.new(0, 3, 10) -- Offset for Scriptable camlock
+-- Removed CAMLOCK_LERP_SPEED
 local isMenuVisible = true; local activeBillboards = {}; local activeChamsHighlights = {}
 local currentEditingFeature = nil; local activeTab = "Visuals"
 local isFlying = false; local isChangingFlyKeybind = false; local flyVelocityInstance = nil; local flyGyroInstance = nil; local flightControlConnection = nil
 local isCamlocking = false
 local originalCameraType = Enum.CameraType.Custom
 
--- Menu UI Elements (References needed later)
+-- Menu UI Elements (References)
 local screenGui, menuFrame, colorPickerFrame, flySettingsFrame = nil, nil, nil, nil
 local hexInput, colorPreview = nil, nil; local flySpeedInput = nil; local flyKeybindButton = nil
 local camlockFovInput = nil; local tabContentFrames = {}; local tabButtons = {}; local featureButtons = {}
@@ -34,23 +34,7 @@ local camlockFovInput = nil; local tabContentFrames = {}; local tabButtons = {};
 local MENU_TOGGLE_ACTION = "ToggleEspMenuAction"
 local CAMLOCK_MOUSE_SINK_ACTION = "CamlockMouseSinkAction"
 
--- ===========================================================
--- Moved createBoxFrames definition VERY early
--- ===========================================================
-local function createBoxFrames(billboard)
-    local boxColor = featureColors["ESP Box"] -- Read from dictionary
-    if not boxColor then boxColor = Color3.new(1,0,1) end -- Fallback color if dictionary access fails early
-
-    local boxContainer = Instance.new("Frame"); boxContainer.Name = "BoxContainer"; boxContainer.BackgroundTransparency = 1; boxContainer.Size = UDim2.new(1, 0, 1, 0); boxContainer.Parent = billboard;
-    local top = Instance.new("Frame"); top.Name = "Top"; top.BackgroundColor3 = boxColor; top.BorderSizePixel = 0; top.Size = UDim2.new(1, 0, 0, BOX_THICKNESS); top.Position = UDim2.new(0, 0, 0, 0); top.Parent = boxContainer;
-    local bottom = Instance.new("Frame"); bottom.Name = "Bottom"; bottom.BackgroundColor3 = boxColor; bottom.BorderSizePixel = 0; bottom.Size = UDim2.new(1, 0, 0, BOX_THICKNESS); bottom.Position = UDim2.new(0, 0, 1, -BOX_THICKNESS); bottom.Parent = boxContainer;
-    local left = Instance.new("Frame"); left.Name = "Left"; left.BackgroundColor3 = boxColor; left.BorderSizePixel = 0; left.Size = UDim2.new(0, BOX_THICKNESS, 1, 0); left.Position = UDim2.new(0, 0, 0, 0); left.Parent = boxContainer;
-    local right = Instance.new("Frame"); right.Name = "Right"; right.BackgroundColor3 = boxColor; right.BorderSizePixel = 0; right.Size = UDim2.new(0, BOX_THICKNESS, 1, 0); right.Position = UDim2.new(1, -BOX_THICKNESS, 0, 0); right.Parent = boxContainer;
-    return boxContainer
-end
--- ===========================================================
-
---[[ UI Creation ]]
+--[[ UI Creation ... (UI Code is identical to the previous version, snipped for brevity) ]]
 screenGui = Instance.new("ScreenGui"); screenGui.Name = "EspMenuGUI"; screenGui.ResetOnSpawn = false; screenGui.IgnoreGuiInset = true; screenGui.DisplayOrder = 10
 menuFrame = Instance.new("Frame"); menuFrame.Name = "MenuFrame"; menuFrame.Size = UDim2.new(0, 280, 0, 220); menuFrame.Position = UDim2.new(0.5, -140, 0.5, -110); menuFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35); menuFrame.BorderColor3 = Color3.fromRGB(80, 80, 80); menuFrame.BorderSizePixel = 1; menuFrame.Active = true; menuFrame.Draggable = true; menuFrame.Visible = isMenuVisible; menuFrame.ClipsDescendants = true; menuFrame.Parent = screenGui; local mc = Instance.new("UICorner"); mc.CornerRadius = UDim.new(0, 4); mc.Parent = menuFrame
 local titleBar = Instance.new("Frame"); titleBar.Name = "TitleBar"; titleBar.Size = UDim2.new(1, 0, 0, 25); titleBar.Position = UDim2.new(0, 0, 0, 0); titleBar.BackgroundColor3 = Color3.fromRGB(55, 55, 55); titleBar.BorderSizePixel = 0; titleBar.Parent = menuFrame; local tc = Instance.new("UICorner"); tc.CornerRadius = UDim.new(0, 4); tc.Parent = titleBar; local titleLabel = Instance.new("TextLabel"); titleLabel.Name = "Title"; titleLabel.Size = UDim2.new(1, -10, 1, 0); titleLabel.Position = UDim2.new(0, 5, 0, 0); titleLabel.BackgroundTransparency = 1; titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220); titleLabel.Font = Enum.Font.SourceSansSemibold; titleLabel.TextSize = 16; titleLabel.Text = "ESP Menu"; titleLabel.TextXAlignment = Enum.TextXAlignment.Left; titleLabel.Parent = titleBar
@@ -63,34 +47,8 @@ colorPickerFrame = Instance.new("Frame"); colorPickerFrame.Name = "ColorPickerFr
 flySettingsFrame = Instance.new("Frame"); flySettingsFrame.Name = "FlySettingsFrame"; flySettingsFrame.Size = UDim2.new(0, 200, 0, 130); flySettingsFrame.Position = UDim2.new(0.5, -100, 0.5, -135); flySettingsFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45); flySettingsFrame.BorderColor3 = Color3.fromRGB(90, 90, 90); flySettingsFrame.BorderSizePixel = 1; flySettingsFrame.Visible = false; flySettingsFrame.ClipsDescendants = true; flySettingsFrame.Parent = screenGui; local fsc = Instance.new("UICorner"); fsc.CornerRadius = UDim.new(0, 4); fsc.Parent = flySettingsFrame; local flySettingsTitle = Instance.new("TextLabel"); flySettingsTitle.Name = "FlySettingsTitle"; flySettingsTitle.Size = UDim2.new(1, -10, 0, 20); flySettingsTitle.Position = UDim2.new(0, 5, 0, 3); flySettingsTitle.BackgroundTransparency = 1; flySettingsTitle.TextColor3 = Color3.fromRGB(200, 200, 200); flySettingsTitle.Font = Enum.Font.SourceSans; flySettingsTitle.TextSize = 14; flySettingsTitle.Text = "Fly Settings"; flySettingsTitle.TextXAlignment = Enum.TextXAlignment.Left; flySettingsTitle.Parent = flySettingsFrame; local speedFrame = Instance.new("Frame"); speedFrame.Name = "FlySpeedFrame"; speedFrame.Size = UDim2.new(1, -10, 0, 25); speedFrame.Position = UDim2.new(0, 5, 0, 30); speedFrame.BackgroundTransparency = 1; speedFrame.Parent = flySettingsFrame; local speedLabel = Instance.new("TextLabel"); speedLabel.Name = "Label"; speedLabel.Size = UDim2.new(0.5, -5, 1, 0); speedLabel.Position = UDim2.new(0, 0, 0, 0); speedLabel.BackgroundTransparency = 1; speedLabel.TextColor3 = Color3.fromRGB(200, 200, 200); speedLabel.Font = Enum.Font.SourceSans; speedLabel.TextSize = 14; speedLabel.Text = "Fly Speed:"; speedLabel.TextXAlignment = Enum.TextXAlignment.Left; speedLabel.Parent = speedFrame; flySpeedInput = Instance.new("TextBox"); flySpeedInput.Name = "SpeedInput"; flySpeedInput.Size = UDim2.new(0.5, 0, 1, 0); flySpeedInput.Position = UDim2.new(0.5, 0, 0, 0); flySpeedInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60); flySpeedInput.TextColor3 = Color3.fromRGB(220, 220, 220); flySpeedInput.Font = Enum.Font.SourceSans; flySpeedInput.TextSize = 14; flySpeedInput.ClearTextOnFocus = false; flySpeedInput.Text = tostring(flySpeed); flySpeedInput.Parent = speedFrame; local sic = Instance.new("UICorner"); sic.CornerRadius = UDim.new(0, 3); sic.Parent = flySpeedInput; flySpeedInput.FocusLost:Connect(function(ep) if ep or true then local n = tonumber(flySpeedInput.Text); if n and n>0 then flySpeed=n; flySpeedInput.Text=tostring(flySpeed) else flySpeedInput.Text=tostring(flySpeed) end end end); local keybindFrame = Instance.new("Frame"); keybindFrame.Name = "FlyKeybindFrame"; keybindFrame.Size = UDim2.new(1, -10, 0, 25); keybindFrame.Position = UDim2.new(0, 5, 0, 60); keybindFrame.BackgroundTransparency = 1; keybindFrame.Parent = flySettingsFrame; local keybindLabel = Instance.new("TextLabel"); keybindLabel.Name = "Label"; keybindLabel.Size = UDim2.new(0.5, -5, 1, 0); keybindLabel.Position = UDim2.new(0, 0, 0, 0); keybindLabel.BackgroundTransparency = 1; keybindLabel.TextColor3 = Color3.fromRGB(200, 200, 200); keybindLabel.Font = Enum.Font.SourceSans; keybindLabel.TextSize = 14; keybindLabel.Text = "Fly Keybind:"; keybindLabel.TextXAlignment = Enum.TextXAlignment.Left; keybindLabel.Parent = keybindFrame; flyKeybindButton = Instance.new("TextButton"); flyKeybindButton.Name = "KeybindButton"; flyKeybindButton.Size = UDim2.new(0.5, 0, 1, 0); flyKeybindButton.Position = UDim2.new(0.5, 0, 0, 0); flyKeybindButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60); flyKeybindButton.TextColor3 = Color3.fromRGB(220, 220, 220); flyKeybindButton.Font = Enum.Font.SourceSans; flyKeybindButton.TextSize = 14; flyKeybindButton.Text = flyKeybind.Name; flyKeybindButton.Parent = keybindFrame; local kbc = Instance.new("UICorner"); kbc.CornerRadius = UDim.new(0, 3); kbc.Parent = flyKeybindButton; flyKeybindButton.MouseButton1Click:Connect(function() if isChangingFlyKeybind then return end; isChangingFlyKeybind = true; flyKeybindButton.Text = "[Press Key]"; flyKeybindButton.TextColor3 = Color3.fromRGB(255,255,0) end); local flySettingsCloseButton = Instance.new("TextButton"); flySettingsCloseButton.Name = "CloseButton"; flySettingsCloseButton.Size = UDim2.new(1, -10, 0, 25); flySettingsCloseButton.Position = UDim2.new(0, 5, 1, -30); flySettingsCloseButton.BackgroundColor3 = Color3.fromRGB(120, 80, 80); flySettingsCloseButton.TextColor3 = Color3.fromRGB(220, 220, 220); flySettingsCloseButton.Font = Enum.Font.SourceSansSemibold; flySettingsCloseButton.TextSize = 14; flySettingsCloseButton.Text = "Close"; flySettingsCloseButton.Parent = flySettingsFrame; local fscc = Instance.new("UICorner"); fscc.CornerRadius = UDim.new(0, 3); fscc.Parent = flySettingsCloseButton; flySettingsCloseButton.MouseButton1Click:Connect(function() flySettingsFrame.Visible = false; if isChangingFlyKeybind then isChangingFlyKeybind = false; flyKeybindButton.Text = flyKeybind.Name; flyKeybindButton.TextColor3 = Color3.fromRGB(220, 220, 220) end end)
 local function openFlySettings() flySettingsFrame.Visible = true; if colorPickerFrame then colorPickerFrame.Visible = false end end
 local function updateFeatureButtonAppearance(featureName) local button = featureButtons[featureName]; local isActive = featureStates[featureName]; if button then button.BackgroundColor3 = isActive and Color3.fromRGB(90, 140, 90) or Color3.fromRGB(60, 60, 60); button.TextColor3 = isActive and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(220, 220, 220) end end
-
--- Helper function to create a feature toggle button row
-local function createFeatureToggle(featureName, order, parentFrame, showGear)
-	local rowFrame = Instance.new("Frame"); rowFrame.Name = featureName .. "RowFrame"; rowFrame.Size = UDim2.new(1, 0, 0, 30); rowFrame.BackgroundTransparency = 1; rowFrame.LayoutOrder = order; rowFrame.Parent = parentFrame
-	local gearWidth = showGear and 35 or 0
-	local featureButton = Instance.new("TextButton"); featureButton.Name = featureName .. "Button"; featureButton.Size = UDim2.new(1, -gearWidth, 1, 0); featureButton.Position = UDim2.new(0, 0, 0, 0); featureButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60); featureButton.TextColor3 = Color3.fromRGB(220, 220, 220); featureButton.Font = Enum.Font.SourceSans; featureButton.TextSize = 14; featureButton.Text = featureName; featureButton.Parent = rowFrame; local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 3); fc.Parent = featureButton
-	featureButtons[featureName] = featureButton -- Store reference
-
-	local gearButton = nil
-	if showGear then
-		gearButton = Instance.new("TextButton"); gearButton.Name = "GearButton"; gearButton.Size = UDim2.new(0, 25, 1, 0); gearButton.Position = UDim2.new(1, -30, 0, 0); gearButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70); gearButton.TextColor3 = Color3.fromRGB(200, 200, 200); gearButton.Font = Enum.Font.SourceSansSemibold; gearButton.TextSize = 16; gearButton.Text = "⚙️"; gearButton.Parent = rowFrame; local gc = Instance.new("UICorner"); gc.CornerRadius = UDim.new(0, 3); gc.Parent = gearButton
-		-- Conditional opening based on feature name
-		if featureName == "Fly" then gearButton.MouseButton1Click:Connect(openFlySettings)
-		elseif featureColors[featureName] then gearButton.MouseButton1Click:Connect(function() openColorPicker(featureName) end)
-        -- Add elseif for Camlock gear later if needed
-		end
-	end
-
-	featureButton.MouseButton1Click:Connect(function() featureStates[featureName] = not featureStates[featureName]; updateFeatureButtonAppearance(featureName) end)
-	updateFeatureButtonAppearance(featureName) -- Set initial appearance
-end
-
--- Create Visuals Tab Features
-createFeatureToggle("ESP Box", 1, visualsContent, true); createFeatureToggle("Chams", 2, visualsContent, true)
--- Create Movement Tab Features
-createFeatureToggle("Fly", 1, movementContent, true)
--- Create Aim Tab Features
-createFeatureToggle("Camlock", 1, aimContent, false)
+local function createFeatureToggle(featureName, order, parentFrame, showGear) local rowFrame = Instance.new("Frame"); rowFrame.Name = featureName .. "RowFrame"; rowFrame.Size = UDim2.new(1, 0, 0, 30); rowFrame.BackgroundTransparency = 1; rowFrame.LayoutOrder = order; rowFrame.Parent = parentFrame; local gearWidth = showGear and 35 or 0; local featureButton = Instance.new("TextButton"); featureButton.Name = featureName .. "Button"; featureButton.Size = UDim2.new(1, -gearWidth, 1, 0); featureButton.Position = UDim2.new(0, 0, 0, 0); featureButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60); featureButton.TextColor3 = Color3.fromRGB(220, 220, 220); featureButton.Font = Enum.Font.SourceSans; featureButton.TextSize = 14; featureButton.Text = featureName; featureButton.Parent = rowFrame; local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 3); fc.Parent = featureButton; featureButtons[featureName] = featureButton; local gearButton = nil; if showGear then gearButton = Instance.new("TextButton"); gearButton.Name = "GearButton"; gearButton.Size = UDim2.new(0, 25, 1, 0); gearButton.Position = UDim2.new(1, -30, 0, 0); gearButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70); gearButton.TextColor3 = Color3.fromRGB(200, 200, 200); gearButton.Font = Enum.Font.SourceSansSemibold; gearButton.TextSize = 16; gearButton.Text = "⚙️"; gearButton.Parent = rowFrame; local gc = Instance.new("UICorner"); gc.CornerRadius = UDim.new(0, 3); gc.Parent = gearButton; if featureName == "Fly" then gearButton.MouseButton1Click:Connect(openFlySettings) elseif featureColors[featureName] then gearButton.MouseButton1Click:Connect(function() openColorPicker(featureName) end) end end; featureButton.MouseButton1Click:Connect(function() featureStates[featureName] = not featureStates[featureName]; updateFeatureButtonAppearance(featureName) end); updateFeatureButtonAppearance(featureName) end
+createFeatureToggle("ESP Box", 1, visualsContent, true); createFeatureToggle("Chams", 2, visualsContent, true); createFeatureToggle("Fly", 1, movementContent, true); createFeatureToggle("Camlock", 1, aimContent, false)
 local fovFrame = Instance.new("Frame"); fovFrame.Name = "CamlockFovFrame"; fovFrame.Size = UDim2.new(1, 0, 0, 25); fovFrame.BackgroundTransparency = 1; fovFrame.LayoutOrder = 2; fovFrame.Parent = aimContent; local fovLabel = Instance.new("TextLabel"); fovLabel.Name = "Label"; fovLabel.Size = UDim2.new(0.5, -5, 1, 0); fovLabel.Position = UDim2.new(0, 0, 0, 0); fovLabel.BackgroundTransparency = 1; fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200); fovLabel.Font = Enum.Font.SourceSans; fovLabel.TextSize = 14; fovLabel.Text = "Lock FOV:"; fovLabel.TextXAlignment = Enum.TextXAlignment.Left; fovLabel.Parent = fovFrame; camlockFovInput = Instance.new("TextBox"); camlockFovInput.Name = "FovInput"; camlockFovInput.Size = UDim2.new(0.5, 0, 1, 0); camlockFovInput.Position = UDim2.new(0.5, 0, 0, 0); camlockFovInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60); camlockFovInput.TextColor3 = Color3.fromRGB(220, 220, 220); camlockFovInput.Font = Enum.Font.SourceSans; camlockFovInput.TextSize = 14; camlockFovInput.ClearTextOnFocus = false; camlockFovInput.Text = tostring(camlockFOV); camlockFovInput.Parent = fovFrame; local fic = Instance.new("UICorner"); fic.CornerRadius = UDim.new(0, 3); fic.Parent = camlockFovInput; camlockFovInput.FocusLost:Connect(function(ep) if ep or true then local n = tonumber(camlockFovInput.Text); if n and n>0 then camlockFOV=n; camlockFovInput.Text=tostring(camlockFOV) else camlockFovInput.Text=tostring(camlockFOV) end end end)
 
 --[[ Flight Logic ]]
@@ -101,9 +59,31 @@ local function onCharacterAdded(char) stopFlying(); local humanoid = char:WaitFo
 
 --[[ Camlock Logic ]]
 local function findCamlockTarget() local target = nil; local minDist = camlockFOV; local viewportSize = currentCamera.ViewportSize; local screenCenter = viewportSize / 2; for _, player in ipairs(Players:GetPlayers()) do if player ~= localPlayer and player.Character then local head = player.Character:FindFirstChild("Head"); local hrp = player.Character:FindFirstChild("HumanoidRootPart"); local targetPart = head or hrp; if targetPart then local screenPos, onScreen = currentCamera:WorldToViewportPoint(targetPart.Position); if onScreen then local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude; if dist < minDist then minDist = dist; target = targetPart end end end end end; return target end
-local function updateCamlock() if not isCamlocking or not featureStates["Camlock"] then return end; local playerChar = localPlayer.Character; local hrp = playerChar and playerChar:FindFirstChild("HumanoidRootPart"); if not hrp then stopCamlock(); return end; camlockTarget = findCamlockTarget(); local targetPosition; if camlockTarget and camlockTarget.Parent then targetPosition = camlockTarget.Position else return end; local hrpCF = hrp.CFrame; local desiredCameraPosition = (hrpCF * CFrame.new(CAMERA_OFFSET)).Position; local targetCFrame = CFrame.new(desiredCameraPosition, targetPosition); currentCamera.CFrame = currentCamera.CFrame:Lerp(targetCFrame, CAMLOCK_LERP_SPEED) end
-local function startCamlock() if not featureStates["Camlock"] or isCamlocking then return end; isCamlocking = true; originalCameraType = currentCamera.CameraType; currentCamera.CameraType = Enum.CameraType.Scriptable; end
-local function stopCamlock() if not isCamlocking then return end; isCamlocking = false; camlockTarget = nil; currentCamera.CameraType = originalCameraType; end
+
+-- Modified updateCamlock function (Scriptable + Manual Position + NO Lerp)
+local function updateCamlock()
+	if not isCamlocking or not featureStates["Camlock"] then return end
+
+	local playerChar = localPlayer.Character
+	local hrp = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
+	if not hrp then stopCamlock(); return end
+
+	camlockTarget = findCamlockTarget()
+
+	local targetPosition
+	if camlockTarget and camlockTarget.Parent then targetPosition = camlockTarget.Position
+	else return end -- Exit if no valid target this frame
+
+	local hrpCF = hrp.CFrame
+	local desiredCameraPosition = (hrpCF * CFrame.new(CAMERA_OFFSET)).Position
+	local targetCFrame = CFrame.new(desiredCameraPosition, targetPosition)
+
+	-- Directly set CFrame for instant snap (no Lerp)
+	currentCamera.CFrame = targetCFrame
+end
+
+local function startCamlock() if not featureStates["Camlock"] or isCamlocking then return end; isCamlocking = true; originalCameraType = currentCamera.CameraType; currentCamera.CameraType = Enum.CameraType.Scriptable; end -- No connect needed
+local function stopCamlock() if not isCamlocking then return end; isCamlocking = false; camlockTarget = nil; currentCamera.CameraType = originalCameraType; end -- No disconnect needed
 
 --[[ Core Update Loop ]]
 local function mainUpdateLoop()
@@ -127,8 +107,7 @@ local function mainUpdateLoop()
 					--print("[ESP Box] Creating new billboard for", player.Name) -- DEBUG
 					billboard = Instance.new("BillboardGui"); billboard.Name = "EspBillboard"; billboard.AlwaysOnTop = true
 					billboard.Size = UDim2.new(0, 100, 0, 150); billboard.Adornee = hrp; billboard.LightInfluence = 0; billboard.ResetOnSpawn = false
-					createBoxFrames(billboard); -- Function defined above main loop now
-					billboard.Parent = playerGui; activeBillboards[player] = billboard
+					createBoxFrames(billboard); billboard.Parent = playerGui; activeBillboards[player] = billboard
 				end
 				local distance = (hrp.Position - currentCamera.CFrame.Position).Magnitude
 				local scaleFactor = math.clamp(BOX_SCALING_BASE / math.max(distance, 0.1), BOX_MIN_SIZE, BOX_MAX_SIZE)
@@ -146,7 +125,7 @@ local function mainUpdateLoop()
 	for player, billboard in pairs(activeBillboards) do if not playersToUpdate[player] then if billboard and billboard.Parent then billboard:Destroy() end; activeBillboards[player] = nil end end
 	for player, chamsHighlight in pairs(activeChamsHighlights) do if not playersToUpdate[player] then if chamsHighlight and chamsHighlight.Parent then chamsHighlight:Destroy() end; activeChamsHighlights[player] = nil end end
 
-    -- Update Camlock (if active)
+    -- Update Camlock (if active) - Runs within Heartbeat loop
     if isCamlocking then
         updateCamlock()
     end
@@ -166,4 +145,4 @@ UserInputService.InputEnded:Connect(function(input, gameProcessedEvent) if input
 --[[ Initialization ]]
 RunService.Heartbeat:Connect(mainUpdateLoop) -- Connect the single main update loop
 screenGui.Parent = playerGui
-print("ESP Menu Script Loaded (v_fixed_esp_order). Menu visible. Press RightShift to toggle.")
+print("ESP Menu Script Loaded (v_camlock_snap). Menu visible. Press RightShift to toggle.")
