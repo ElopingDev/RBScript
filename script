@@ -1,4 +1,4 @@
---[[ ESP Menu Script - Camlock with Instant Snapping ]]
+--[[ ESP Menu Script - Camlock on Right Mouse Button ]]
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -17,8 +17,8 @@ local featureColors = { ["ESP Box"] = Color3.fromRGB(128, 0, 128), ["Chams"] = C
 local BOX_THICKNESS = 2; local BOX_SCALING_BASE = 3000; local BOX_MIN_SIZE = 30; local BOX_MAX_SIZE = 180
 local flySpeed = 50; local flyKeybind = Enum.KeyCode.F
 local camlockFOV = 100; local camlockTarget = nil
-local CAMERA_OFFSET = Vector3.new(0, 3, 10) -- Offset for Scriptable camlock
--- Removed CAMLOCK_LERP_SPEED
+local CAMERA_OFFSET = Vector3.new(0, 3, 10)
+local CAMLOCK_LERP_SPEED = 0.2
 local isMenuVisible = true; local activeBillboards = {}; local activeChamsHighlights = {}
 local currentEditingFeature = nil; local activeTab = "Visuals"
 local isFlying = false; local isChangingFlyKeybind = false; local flyVelocityInstance = nil; local flyGyroInstance = nil; local flightControlConnection = nil
@@ -51,7 +51,7 @@ local function createFeatureToggle(featureName, order, parentFrame, showGear) lo
 createFeatureToggle("ESP Box", 1, visualsContent, true); createFeatureToggle("Chams", 2, visualsContent, true); createFeatureToggle("Fly", 1, movementContent, true); createFeatureToggle("Camlock", 1, aimContent, false)
 local fovFrame = Instance.new("Frame"); fovFrame.Name = "CamlockFovFrame"; fovFrame.Size = UDim2.new(1, 0, 0, 25); fovFrame.BackgroundTransparency = 1; fovFrame.LayoutOrder = 2; fovFrame.Parent = aimContent; local fovLabel = Instance.new("TextLabel"); fovLabel.Name = "Label"; fovLabel.Size = UDim2.new(0.5, -5, 1, 0); fovLabel.Position = UDim2.new(0, 0, 0, 0); fovLabel.BackgroundTransparency = 1; fovLabel.TextColor3 = Color3.fromRGB(200, 200, 200); fovLabel.Font = Enum.Font.SourceSans; fovLabel.TextSize = 14; fovLabel.Text = "Lock FOV:"; fovLabel.TextXAlignment = Enum.TextXAlignment.Left; fovLabel.Parent = fovFrame; camlockFovInput = Instance.new("TextBox"); camlockFovInput.Name = "FovInput"; camlockFovInput.Size = UDim2.new(0.5, 0, 1, 0); camlockFovInput.Position = UDim2.new(0.5, 0, 0, 0); camlockFovInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60); camlockFovInput.TextColor3 = Color3.fromRGB(220, 220, 220); camlockFovInput.Font = Enum.Font.SourceSans; camlockFovInput.TextSize = 14; camlockFovInput.ClearTextOnFocus = false; camlockFovInput.Text = tostring(camlockFOV); camlockFovInput.Parent = fovFrame; local fic = Instance.new("UICorner"); fic.CornerRadius = UDim.new(0, 3); fic.Parent = camlockFovInput; camlockFovInput.FocusLost:Connect(function(ep) if ep or true then local n = tonumber(camlockFovInput.Text); if n and n>0 then camlockFOV=n; camlockFovInput.Text=tostring(camlockFOV) else camlockFovInput.Text=tostring(camlockFOV) end end end)
 
---[[ Flight Logic ]]
+--[[ Flight Logic - Unchanged ]]
 local function startFlying() local char = localPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); local humanoid = char and char:FindFirstChildOfClass("Humanoid"); if not hrp or not humanoid or isFlying then return end; isFlying = true; if flyVelocityInstance and flyVelocityInstance.Parent then flyVelocityInstance:Destroy() end; if flyGyroInstance and flyGyroInstance.Parent then flyGyroInstance:Destroy() end; flyVelocityInstance = Instance.new("BodyVelocity"); flyVelocityInstance.Name = "FlyVelocity"; flyVelocityInstance.MaxForce = Vector3.new(math.huge, math.huge, math.huge); flyVelocityInstance.Velocity = Vector3.zero; flyVelocityInstance.Parent = hrp; flyGyroInstance = Instance.new("BodyGyro"); flyGyroInstance.Name = "FlyGyro"; flyGyroInstance.MaxTorque = Vector3.new(400000, 400000, 400000) * 50; flyGyroInstance.P = 5000; flyGyroInstance.D = 500; flyGyroInstance.CFrame = hrp.CFrame; flyGyroInstance.Parent = hrp; if flightControlConnection then flightControlConnection:Disconnect() end; flightControlConnection = RunService.Heartbeat:Connect(controlFlight) end
 local function stopFlying() if not isFlying then return end; isFlying = false; if flyVelocityInstance then flyVelocityInstance:Destroy(); flyVelocityInstance = nil end; if flyGyroInstance then flyGyroInstance:Destroy(); flyGyroInstance = nil end; if flightControlConnection then flightControlConnection:Disconnect(); flightControlConnection = nil end end
 function controlFlight(dt) local char = localPlayer.Character; local hrp = char and char:FindFirstChild("HumanoidRootPart"); if not featureStates["Fly"] or not isFlying or not flyVelocityInstance or not flyGyroInstance or not hrp then stopFlying(); return end; local finalMoveDir = Vector3.zero; local camCF = currentCamera.CFrame; if UserInputService:IsKeyDown(Enum.KeyCode.W) then finalMoveDir += camCF.LookVector end; if UserInputService:IsKeyDown(Enum.KeyCode.S) then finalMoveDir -= camCF.LookVector end; if UserInputService:IsKeyDown(Enum.KeyCode.A) then finalMoveDir -= camCF.RightVector end; if UserInputService:IsKeyDown(Enum.KeyCode.D) then finalMoveDir += camCF.RightVector end; if UserInputService:IsKeyDown(Enum.KeyCode.Space) then finalMoveDir += Vector3.new(0,1,0) end; if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.C) then finalMoveDir -= Vector3.new(0,1,0) end; local finalVelocity = Vector3.zero; if finalMoveDir.Magnitude > 0 then finalVelocity = finalMoveDir.Unit * flySpeed end; flyVelocityInstance.Velocity = finalVelocity; flyGyroInstance.CFrame = CFrame.new(hrp.Position, hrp.Position + camCF.LookVector) end
@@ -59,77 +59,12 @@ local function onCharacterAdded(char) stopFlying(); local humanoid = char:WaitFo
 
 --[[ Camlock Logic ]]
 local function findCamlockTarget() local target = nil; local minDist = camlockFOV; local viewportSize = currentCamera.ViewportSize; local screenCenter = viewportSize / 2; for _, player in ipairs(Players:GetPlayers()) do if player ~= localPlayer and player.Character then local head = player.Character:FindFirstChild("Head"); local hrp = player.Character:FindFirstChild("HumanoidRootPart"); local targetPart = head or hrp; if targetPart then local screenPos, onScreen = currentCamera:WorldToViewportPoint(targetPart.Position); if onScreen then local dist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude; if dist < minDist then minDist = dist; target = targetPart end end end end end; return target end
-
--- Modified updateCamlock function (Scriptable + Manual Position + NO Lerp)
-local function updateCamlock()
-	if not isCamlocking or not featureStates["Camlock"] then return end
-
-	local playerChar = localPlayer.Character
-	local hrp = playerChar and playerChar:FindFirstChild("HumanoidRootPart")
-	if not hrp then stopCamlock(); return end
-
-	camlockTarget = findCamlockTarget()
-
-	local targetPosition
-	if camlockTarget and camlockTarget.Parent then targetPosition = camlockTarget.Position
-	else return end -- Exit if no valid target this frame
-
-	local hrpCF = hrp.CFrame
-	local desiredCameraPosition = (hrpCF * CFrame.new(CAMERA_OFFSET)).Position
-	local targetCFrame = CFrame.new(desiredCameraPosition, targetPosition)
-
-	-- Directly set CFrame for instant snap (no Lerp)
-	currentCamera.CFrame = targetCFrame
-end
-
-local function startCamlock() if not featureStates["Camlock"] or isCamlocking then return end; isCamlocking = true; originalCameraType = currentCamera.CameraType; currentCamera.CameraType = Enum.CameraType.Scriptable; end -- No connect needed
-local function stopCamlock() if not isCamlocking then return end; isCamlocking = false; camlockTarget = nil; currentCamera.CameraType = originalCameraType; end -- No disconnect needed
+local function updateCamlock() if not isCamlocking or not featureStates["Camlock"] then return end; local playerChar = localPlayer.Character; local hrp = playerChar and playerChar:FindFirstChild("HumanoidRootPart"); if not hrp then stopCamlock(); return end; camlockTarget = findCamlockTarget(); local targetPosition; if camlockTarget and camlockTarget.Parent then targetPosition = camlockTarget.Position else return end; local hrpCF = hrp.CFrame; local desiredCameraPosition = (hrpCF * CFrame.new(CAMERA_OFFSET)).Position; local targetCFrame = CFrame.new(desiredCameraPosition, targetPosition); currentCamera.CFrame = targetCFrame end -- Removed Lerp for instant snap
+local function startCamlock() if not featureStates["Camlock"] or isCamlocking then return end; isCamlocking = true; originalCameraType = currentCamera.CameraType; currentCamera.CameraType = Enum.CameraType.Scriptable; end
+local function stopCamlock() if not isCamlocking then return end; isCamlocking = false; camlockTarget = nil; currentCamera.CameraType = originalCameraType; end
 
 --[[ Core Update Loop ]]
-local function mainUpdateLoop()
-	if not currentCamera then currentCamera = workspace.CurrentCamera return end
-	-- Check/manage flight state
-	if featureStates["Fly"] and not isFlying then startFlying() elseif not featureStates["Fly"] and isFlying then stopFlying() end
-    -- Check/manage camlock state
-    if not featureStates["Camlock"] and isCamlocking then stopCamlock() end
-
-	-- Update ESP/Chams visuals
-	local currentPlayers = Players:GetPlayers(); local playersToUpdate = {}
-	for _, player in ipairs(currentPlayers) do
-		if player == localPlayer then continue end
-		local character = player.Character; local humanoid = character and character:FindFirstChildOfClass("Humanoid"); local hrp = humanoid and humanoid.RootPart
-		if character and character.Parent == workspace and humanoid and humanoid.Health > 0 and hrp then
-			playersToUpdate[player] = true
-			-- ESP Box Logic
-			if featureStates["ESP Box"] then
-				local billboard = activeBillboards[player]; local boxColor = featureColors["ESP Box"]
-				if not billboard or not billboard.Parent then
-					--print("[ESP Box] Creating new billboard for", player.Name) -- DEBUG
-					billboard = Instance.new("BillboardGui"); billboard.Name = "EspBillboard"; billboard.AlwaysOnTop = true
-					billboard.Size = UDim2.new(0, 100, 0, 150); billboard.Adornee = hrp; billboard.LightInfluence = 0; billboard.ResetOnSpawn = false
-					createBoxFrames(billboard); billboard.Parent = playerGui; activeBillboards[player] = billboard
-				end
-				local distance = (hrp.Position - currentCamera.CFrame.Position).Magnitude
-				local scaleFactor = math.clamp(BOX_SCALING_BASE / math.max(distance, 0.1), BOX_MIN_SIZE, BOX_MAX_SIZE)
-				billboard.Size = UDim2.new(0, scaleFactor, 0, scaleFactor * 1.5)
-				billboard.Enabled = true
-				--print(string.format("[ESP Box] Updating billboard for %s Size: %.1f, %.1f", player.Name, billboard.Size.X.Offset, billboard.Size.Y.Offset)) -- DEBUG
-				if billboard.BoxContainer then for _, frame in ipairs(billboard.BoxContainer:GetChildren()) do if frame:IsA("Frame") then frame.BackgroundColor3 = boxColor end end
-                -- else print("[ESP Box] Warning: BoxContainer not found for", player.Name) -- DEBUG
-                end
-			else if activeBillboards[player] then if activeBillboards[player].Parent then activeBillboards[player]:Destroy() end; activeBillboards[player] = nil end end
-			-- Chams Logic
-			if featureStates["Chams"] then local chamsHighlight = activeChamsHighlights[player]; local chamsColor = featureColors["Chams"]; if not chamsHighlight or not chamsHighlight.Parent then chamsHighlight = Instance.new("Highlight"); chamsHighlight.Name = "ChamsHighlight"; chamsHighlight.Adornee = character; chamsHighlight.FillColor = chamsColor; chamsHighlight.FillTransparency = 0; chamsHighlight.OutlineTransparency = 1; chamsHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; chamsHighlight.Enabled = true; chamsHighlight.Parent = character; activeChamsHighlights[player] = chamsHighlight elseif chamsHighlight.Adornee ~= character then chamsHighlight.Adornee = character; chamsHighlight.Enabled = true; chamsHighlight.FillColor = chamsColor else chamsHighlight.Enabled = true; chamsHighlight.FillColor = chamsColor end else if activeChamsHighlights[player] then if activeChamsHighlights[player].Parent then activeChamsHighlights[player]:Destroy() end; activeChamsHighlights[player] = nil end end
-		else if activeBillboards[player] then if activeBillboards[player].Parent then activeBillboards[player]:Destroy() end; activeBillboards[player] = nil end; if activeChamsHighlights[player] then if activeChamsHighlights[player].Parent then activeChamsHighlights[player]:Destroy() end; activeChamsHighlights[player] = nil end end
-	end
-	for player, billboard in pairs(activeBillboards) do if not playersToUpdate[player] then if billboard and billboard.Parent then billboard:Destroy() end; activeBillboards[player] = nil end end
-	for player, chamsHighlight in pairs(activeChamsHighlights) do if not playersToUpdate[player] then if chamsHighlight and chamsHighlight.Parent then chamsHighlight:Destroy() end; activeChamsHighlights[player] = nil end end
-
-    -- Update Camlock (if active) - Runs within Heartbeat loop
-    if isCamlocking then
-        updateCamlock()
-    end
-end
+local function mainUpdateLoop() if not currentCamera then currentCamera = workspace.CurrentCamera return end; if featureStates["Fly"] and not isFlying then startFlying() elseif not featureStates["Fly"] and isFlying then stopFlying() end; if not featureStates["Camlock"] and isCamlocking then stopCamlock() end; local currentPlayers = Players:GetPlayers(); local playersToUpdate = {}; for _, player in ipairs(currentPlayers) do if player == localPlayer then continue end; local character = player.Character; local humanoid = character and character:FindFirstChildOfClass("Humanoid"); local hrp = humanoid and humanoid.RootPart; if character and character.Parent == workspace and humanoid and humanoid.Health > 0 and hrp then playersToUpdate[player] = true; if featureStates["ESP Box"] then local billboard = activeBillboards[player]; local boxColor = featureColors["ESP Box"]; if not billboard or not billboard.Parent then billboard = Instance.new("BillboardGui"); billboard.Name = "EspBillboard"; billboard.AlwaysOnTop = true; billboard.Size = UDim2.new(0, 100, 0, 150); billboard.Adornee = hrp; billboard.LightInfluence = 0; billboard.ResetOnSpawn = false; createBoxFrames(billboard); billboard.Parent = playerGui; activeBillboards[player] = billboard end; local distance = (hrp.Position - currentCamera.CFrame.Position).Magnitude; local scaleFactor = math.clamp(BOX_SCALING_BASE / math.max(distance, 0.1), BOX_MIN_SIZE, BOX_MAX_SIZE); billboard.Size = UDim2.new(0, scaleFactor, 0, scaleFactor * 1.5); billboard.Enabled = true; if billboard.BoxContainer then for _, frame in ipairs(billboard.BoxContainer:GetChildren()) do if frame:IsA("Frame") then frame.BackgroundColor3 = boxColor end end end else if activeBillboards[player] then if activeBillboards[player].Parent then activeBillboards[player]:Destroy() end; activeBillboards[player] = nil end end; if featureStates["Chams"] then local chamsHighlight = activeChamsHighlights[player]; local chamsColor = featureColors["Chams"]; if not chamsHighlight or not chamsHighlight.Parent then chamsHighlight = Instance.new("Highlight"); chamsHighlight.Name = "ChamsHighlight"; chamsHighlight.Adornee = character; chamsHighlight.FillColor = chamsColor; chamsHighlight.FillTransparency = 0; chamsHighlight.OutlineTransparency = 1; chamsHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop; chamsHighlight.Enabled = true; chamsHighlight.Parent = character; activeChamsHighlights[player] = chamsHighlight elseif chamsHighlight.Adornee ~= character then chamsHighlight.Adornee = character; chamsHighlight.Enabled = true; chamsHighlight.FillColor = chamsColor else chamsHighlight.Enabled = true; chamsHighlight.FillColor = chamsColor end else if activeChamsHighlights[player] then if activeChamsHighlights[player].Parent then activeChamsHighlights[player]:Destroy() end; activeChamsHighlights[player] = nil end end else if activeBillboards[player] then if activeBillboards[player].Parent then activeBillboards[player]:Destroy() end; activeBillboards[player] = nil end; if activeChamsHighlights[player] then if activeChamsHighlights[player].Parent then activeChamsHighlights[player]:Destroy() end; activeChamsHighlights[player] = nil end end end; for player, billboard in pairs(activeBillboards) do if not playersToUpdate[player] then if billboard and billboard.Parent then billboard:Destroy() end; activeBillboards[player] = nil end end; for player, chamsHighlight in pairs(activeChamsHighlights) do if not playersToUpdate[player] then if chamsHighlight and chamsHighlight.Parent then chamsHighlight:Destroy() end; activeChamsHighlights[player] = nil end end; if isCamlocking then updateCamlock() end end
 
 --[[ Input Handling ]]
 local function handleMenuToggle(actionName, inputState, inputObject) if inputState == Enum.UserInputState.Begin then isMenuVisible = not isMenuVisible; if menuFrame then menuFrame.Visible = isMenuVisible end; if not isMenuVisible then if colorPickerFrame then colorPickerFrame.Visible = false; currentEditingFeature = nil end; if flySettingsFrame then flySettingsFrame.Visible = false; if isChangingFlyKeybind then isChangingFlyKeybind = false; flyKeybindButton.Text = flyKeybind.Name; flyKeybindButton.TextColor3 = Color3.fromRGB(220, 220, 220) end end end end; return Enum.ContextActionResult.Pass end
@@ -139,10 +74,21 @@ ContextActionService:BindAction(MENU_TOGGLE_ACTION, handleMenuToggle, false, Enu
 local function handleMouseSink(actionName, inputState, inputObject) if isCamlocking and inputState ~= Enum.UserInputState.Cancel then return Enum.ContextActionResult.Sink else return Enum.ContextActionResult.Pass end end
 ContextActionService:BindActionAtPriority(CAMLOCK_MOUSE_SINK_ACTION, handleMouseSink, false, Enum.ContextActionPriority.High.Value + 1, Enum.UserInputType.MouseMovement)
 
-UserInputService.InputBegan:Connect(function(input, gameProcessedEvent) if isChangingFlyKeybind then if input.UserInputType == Enum.UserInputType.Keyboard then if input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode ~= Enum.KeyCode.Escape then flyKeybind = input.KeyCode; flyKeybindButton.Text = flyKeybind.Name; print("Fly keybind set to:", flyKeybind.Name) else flyKeybindButton.Text = flyKeybind.Name end; flyKeybindButton.TextColor3 = Color3.fromRGB(220, 220, 220); isChangingFlyKeybind = false end; return end; local UIsVisible = isMenuVisible or (colorPickerFrame and colorPickerFrame.Visible) or (flySettingsFrame and flySettingsFrame.Visible); if gameProcessedEvent and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end; if UIsVisible and input.UserInputType == Enum.UserInputType.Keyboard then return end; if input.KeyCode == flyKeybind then if not UIsVisible then featureStates["Fly"] = not featureStates["Fly"]; updateFeatureButtonAppearance("Fly") end end; if input.UserInputType == Enum.UserInputType.MouseButton1 then if featureStates["Camlock"] and not UIsVisible then startCamlock() end end end)
-UserInputService.InputEnded:Connect(function(input, gameProcessedEvent) if input.UserInputType == Enum.UserInputType.MouseButton1 then if isCamlocking then stopCamlock() end end end)
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent) if isChangingFlyKeybind then if input.UserInputType == Enum.UserInputType.Keyboard then if input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode ~= Enum.KeyCode.Escape then flyKeybind = input.KeyCode; flyKeybindButton.Text = flyKeybind.Name; print("Fly keybind set to:", flyKeybind.Name) else flyKeybindButton.Text = flyKeybind.Name end; flyKeybindButton.TextColor3 = Color3.fromRGB(220, 220, 220); isChangingFlyKeybind = false end; return end; local UIsVisible = isMenuVisible or (colorPickerFrame and colorPickerFrame.Visible) or (flySettingsFrame and flySettingsFrame.Visible); if gameProcessedEvent and input.UserInputType ~= Enum.UserInputType.MouseButton2 and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end; -- Allow Mouse Button 1/2 even if processed? Check this. Let's block KB if processed.
+	if UIsVisible and input.UserInputType == Enum.UserInputType.Keyboard then return end -- Block KB if UI is open
+    if gameProcessedEvent and input.UserInputType == Enum.UserInputType.Keyboard then return end -- Block KB if game processed it.
+
+	if input.KeyCode == flyKeybind then if not UIsVisible then featureStates["Fly"] = not featureStates["Fly"]; updateFeatureButtonAppearance("Fly") end end
+	-- Activate Camlock on Right Mouse Button Down
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then if featureStates["Camlock"] and not UIsVisible then startCamlock() end end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessedEvent)
+    -- Deactivate Camlock on Right Mouse Button Up
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then if isCamlocking then stopCamlock() end end
+end)
 
 --[[ Initialization ]]
 RunService.Heartbeat:Connect(mainUpdateLoop) -- Connect the single main update loop
 screenGui.Parent = playerGui
-print("ESP Menu Script Loaded (v_camlock_snap). Menu visible. Press RightShift to toggle.")
+print("ESP Menu Script Loaded (v_camlock_snap_rmb). Menu visible. Press RightShift to toggle.")
