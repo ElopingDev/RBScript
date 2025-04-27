@@ -1,7 +1,8 @@
--- Roblox Conditional GUI Loader Script
+-- Roblox Conditional GUI Loader Script with Toggle Menu
 -- Place this LocalScript in StarterPlayerScripts
 
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService") -- Needed for toggle keybind
 local ReplicatedStorage = game:GetService("ReplicatedStorage") -- Optional: If loading pre-made GUI elements
 
 local player = Players.LocalPlayer
@@ -16,83 +17,87 @@ local currentUniverseId = game.GameId
 -- Create a new ScreenGui instance in memory (don't parent yet)
 local screenGui = Instance.new("ScreenGui")
 screenGui.ResetOnSpawn = false -- Keep the GUI when the player respawns
+screenGui.DisplayOrder = 1 -- Control layering if multiple GUIs exist
 
 print("Checking Universe ID:", currentUniverseId)
 
+-- Variable to hold the main UI frame if created
+local mainFrame = nil
+
 -- Check if the current game's Universe ID matches the target
 if currentUniverseId == targetUniverseId then
-	print("Universe ID matches. Configuring 'BubbleGum Infinity Script' GUI.")
+	print("Universe ID matches. Configuring 'BubbleGum Infinity Script' GUI with toggle menu.")
 
 	-- Configure the GUI for the target game
 	screenGui.Name = "BubbleGum Infinity Script"
-	screenGui.DisplayOrder = 1 -- Example: Set display order if needed
 
-	-- == Add UI Elements specific to BubbleGum Infinity ==
-	-- Example: Add a simple TextLabel
-	local infoLabel = Instance.new("TextLabel")
-	infoLabel.Name = "InfoLabel"
-	infoLabel.Size = UDim2.new(0.3, 0, 0.1, 0) -- 30% width, 10% height
-	infoLabel.Position = UDim2.new(0.35, 0, 0.05, 0) -- Position near top-center
-	infoLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-	infoLabel.BackgroundTransparency = 0.3
-	infoLabel.BorderSizePixel = 2
-	infoLabel.BorderColor3 = Color3.fromRGB(200, 200, 200)
-	infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	infoLabel.TextScaled = true
-	infoLabel.Font = Enum.Font.SourceSansBold
-	infoLabel.Text = "BubbleGum Infinity Features Active"
-	infoLabel.Parent = screenGui -- Parent the label to the ScreenGui
+	-- == Create the Main UI Frame (Minimalistic Pink/Black) ==
+	mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainFrame"
+	mainFrame.Size = UDim2.new(0, 300, 0, 200) -- Example size (300x200 pixels)
+	mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100) -- Centered (adjust offset based on size)
+	mainFrame.BackgroundColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink
+	mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0) -- Black border
+	mainFrame.BorderSizePixel = 2
+	mainFrame.Active = true -- Allows dragging if Draggable is true
+	mainFrame.Draggable = true -- Make the frame draggable
+	mainFrame.Visible = false -- Start hidden, toggled by Insert key
+	mainFrame.Parent = screenGui -- Parent the frame to the ScreenGui
 
-	-- Example: Add a Button
-	local actionButton = Instance.new("TextButton")
-	actionButton.Name = "ActionButton"
-	actionButton.Size = UDim2.new(0.2, 0, 0.08, 0)
-	actionButton.Position = UDim2.new(0.4, 0, 0.2, 0)
-	actionButton.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
-	actionButton.BorderSizePixel = 1
-	actionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	actionButton.TextScaled = true
-	actionButton.Font = Enum.Font.SourceSansBold
-	actionButton.Text = "Special Action"
-	actionButton.Parent = screenGui
+	-- Example: Add a Title Bar to the frame
+	local titleBar = Instance.new("Frame")
+	titleBar.Name = "TitleBar"
+	titleBar.Size = UDim2.new(1, 0, 0, 30) -- Full width, 30 pixels height
+	titleBar.Position = UDim2.new(0, 0, 0, 0) -- Top of the mainFrame
+	titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Dark Gray/Black
+	titleBar.BorderSizePixel = 0
+	titleBar.Parent = mainFrame
 
-	-- Add functionality to the button if needed
-	actionButton.MouseButton1Click:Connect(function()
-		print("Special Action Button Clicked!")
-		-- Add code for the button's action here
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"
+	titleLabel.Size = UDim2.new(1, -10, 1, 0) -- Almost full width/height of titleBar
+	titleLabel.Position = UDim2.new(0, 5, 0, 0) -- Centered vertically, slight left padding
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink text
+	titleLabel.Font = Enum.Font.SourceSansBold
+	titleLabel.Text = "Menu" -- Can be screenGui.Name or custom
+	titleLabel.TextScaled = true
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+	titleLabel.Parent = titleBar
+
+	-- Add other UI elements inside mainFrame here as needed (buttons, etc.)
+
+	-- == Toggle Functionality ==
+	local function toggleMenu()
+		if mainFrame then -- Check if mainFrame exists
+			mainFrame.Visible = not mainFrame.Visible
+			print("Menu visibility toggled:", mainFrame.Visible)
+		end
+	end
+
+	-- Connect the toggle function to the Insert key
+	UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+		-- Don't toggle if user is typing in a textbox, etc.
+		if gameProcessedEvent then return end
+
+		if input.KeyCode == Enum.KeyCode.Insert then
+			toggleMenu()
+		end
 	end)
-
-	-- You could also clone pre-made GUI elements from ReplicatedStorage here
-	-- local specificFrame = ReplicatedStorage.GameSpecificUI.MyFrame:Clone()
-	-- specificFrame.Parent = screenGui
 
 else
 	print("Universe ID does not match. Configuring 'Empty Script' GUI.")
 
-	-- Configure the GUI for other games
+	-- Configure the GUI for other games (no special UI elements)
 	screenGui.Name = "Empty Script"
-	screenGui.DisplayOrder = 1
 
-	-- == Add minimal or no UI elements ==
-	-- Example: Add a small indicator label
-	local statusLabel = Instance.new("TextLabel")
-	statusLabel.Name = "StatusLabel"
-	statusLabel.Size = UDim2.new(0, 150, 0, 30) -- Fixed size
-	statusLabel.Position = UDim2.new(1, -160, 0, 10) -- Top-right corner
-	statusLabel.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	statusLabel.BackgroundTransparency = 0.5
-	statusLabel.BorderSizePixel = 0
-	statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-	statusLabel.FontSize = Enum.FontSize.Size14
-	statusLabel.Font = Enum.Font.SourceSans
-	statusLabel.Text = "No special features"
-	statusLabel.TextXAlignment = Enum.TextXAlignment.Center
-	statusLabel.Parent = screenGui
+	-- No mainFrame or toggle functionality needed for the "Empty" version.
+	-- You could add a very minimal indicator if desired, but keeping it empty is fine.
+	-- local statusLabel = Instance.new("TextLabel") ... (optional)
 
-	-- No special buttons or features needed for the "Empty" version
 end
 
--- Finally, parent the fully configured ScreenGui to the PlayerGui
+-- Finally, parent the configured ScreenGui to the PlayerGui
 screenGui.Parent = playerGui
 
 print("GUI '" .. screenGui.Name .. "' loaded and parented to PlayerGui.")
