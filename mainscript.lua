@@ -29,28 +29,28 @@ if currentUniverseId == targetUniverseId then
 	print("Universe ID matches. Configuring 'BubbleGum Infinity Script' GUI with toggle menu.")
 
 	-- Configure the GUI for the target game
-	screenGui.Name = "BubbleGum Infinity Script"
+	screenGui.Name = "BubbleGum Infinity Script" -- Set the GUI name
 
-	-- == Create the Main UI Frame (Minimalistic Pink/Black) ==
+	-- == Create the Main UI Frame (Black with Pink Highlights) ==
 	mainFrame = Instance.new("Frame")
 	mainFrame.Name = "MainFrame"
 	mainFrame.Size = UDim2.new(0, 300, 0, 200) -- Example size (300x200 pixels)
 	mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100) -- Centered (adjust offset based on size)
-	mainFrame.BackgroundColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink
-	mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0) -- Black border
-	mainFrame.BorderSizePixel = 2
+	mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Black background
+	mainFrame.BorderColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink border (highlight)
+	mainFrame.BorderSizePixel = 2 -- Adjust border size as needed
 	mainFrame.Active = true -- Allows dragging if Draggable is true
 	mainFrame.Draggable = true -- Make the frame draggable
 	mainFrame.Visible = false -- Start hidden, toggled by Insert key
 	mainFrame.Parent = screenGui -- Parent the frame to the ScreenGui
 
-	-- Example: Add a Title Bar to the frame
+	-- Add a Title Bar to the frame
 	local titleBar = Instance.new("Frame")
 	titleBar.Name = "TitleBar"
 	titleBar.Size = UDim2.new(1, 0, 0, 30) -- Full width, 30 pixels height
 	titleBar.Position = UDim2.new(0, 0, 0, 0) -- Top of the mainFrame
 	titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Dark Gray/Black
-	titleBar.BorderSizePixel = 0
+	titleBar.BorderSizePixel = 0 -- No border for the title bar itself
 	titleBar.Parent = mainFrame
 
 	local titleLabel = Instance.new("TextLabel")
@@ -60,21 +60,22 @@ if currentUniverseId == targetUniverseId then
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.TextColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink text
 	titleLabel.Font = Enum.Font.SourceSansBold
-	titleLabel.Text = "Menu" -- Can be screenGui.Name or custom
+	titleLabel.Text = screenGui.Name -- Use the ScreenGui's name for the title
 	titleLabel.TextScaled = true
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 	titleLabel.Parent = titleBar
 
-	-- Add other UI elements inside mainFrame here as needed (buttons, etc.)
-	-- For example, a container for buttons:
+	-- Add a container for buttons (ScrollingFrame)
 	local buttonContainer = Instance.new("ScrollingFrame")
 	buttonContainer.Name = "ButtonContainer"
 	buttonContainer.Size = UDim2.new(1, -10, 1, -35) -- Fill below title bar with padding
 	buttonContainer.Position = UDim2.new(0, 5, 0, 35) -- Position below title bar
-	buttonContainer.BackgroundColor3 = Color3.fromRGB(255, 218, 223) -- Slightly different pink shade
-	buttonContainer.BorderSizePixel = 0
+	buttonContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark grey background for container
+	buttonContainer.BorderColor3 = Color3.fromRGB(255, 192, 203) -- Light Pink border (highlight)
+	buttonContainer.BorderSizePixel = 1 -- Slightly thinner border for container
 	buttonContainer.CanvasSize = UDim2.new(0, 0, 0, 0) -- Start with no scrolling needed
 	buttonContainer.ScrollBarThickness = 6
+	buttonContainer.ScrollBarImageColor3 = Color3.fromRGB(255, 192, 203) -- Pink scrollbar
 	buttonContainer.Parent = mainFrame
 
 	-- == Toggle Functionality ==
