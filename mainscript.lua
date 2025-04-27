@@ -110,8 +110,39 @@ end
 -- Create Tabs and Content Frames
 local tabs = {"Legit", "Visuals", "Settings", "Config"} -- Match image approximately
 local activeTabFrame = nil
-local tabButtons = {}
+local tabButtons = {} -- Stores {button = ButtonObj, frame = FrameObj} indexed by tabName
 
+-- Define the activation function *before* connecting it
+local function activateTab(tabNameToActivate)
+    local data = tabButtons[tabNameToActivate]
+    if not data then print("Warning: Tab data not found for", tabNameToActivate) return end -- Safety check
+
+    local buttonToActivate = data.button
+    local frameToActivate = data.frame
+
+    -- Deactivate the currently active tab (if any)
+    if activeTabFrame then
+        -- Find the name of the old tab to get its button data
+        local oldTabName = activeTabFrame.Name:gsub("TabFrame","")
+        local oldTabData = tabButtons[oldTabName]
+        if oldTabData then
+             oldTabData.button.BackgroundColor3 = Color3.fromRGB(50, 50, 60) -- Deselect color
+             oldTabData.button.TextColor3 = Color3.fromRGB(180, 180, 180)
+        else
+             print("Warning: Could not find button data for previously active tab:", oldTabName)
+        end
+        activeTabFrame.Visible = false
+    end
+
+    -- Activate the new tab
+    frameToActivate.Visible = true
+    buttonToActivate.BackgroundColor3 = Color3.fromRGB(65, 65, 75) -- Select color
+    buttonToActivate.TextColor3 = Color3.fromRGB(230, 230, 230)
+    activeTabFrame = frameToActivate
+end
+
+
+-- Create the actual tab buttons and frames
 local currentX = 0.02 -- Starting X position for tabs (as scale)
 for i, tabName in ipairs(tabs) do
     local tabButton = Instance.new("TextButton")
@@ -127,22 +158,16 @@ for i, tabName in ipairs(tabs) do
     tabButton.BorderSizePixel = 1
     tabButton.BorderColor3 = Color3.fromRGB(65,65,75)
 
-    currentX = currentX + 0.01 + (80 / tabContainer.AbsoluteSize.X) -- Update X position for next tab (requires initial size guess or calculation)
+    -- Attempt to calculate next position based on actual size (may need adjustment based on executor context)
+    local frameWidth = menuFrame.AbsoluteSize.X > 0 and menuFrame.AbsoluteSize.X or 500 -- Use default if AbsoluteSize isn't ready
+    currentX = currentX + 0.01 + (80 / frameWidth)
 
     local contentFrame = createTabFrame(tabName)
     tabButtons[tabName] = {button = tabButton, frame = contentFrame}
 
-    -- Tab click logic
+    -- Connect the click event AFTER the function is defined
     tabButton.MouseButton1Click:Connect(function()
-        if activeTabFrame then
-            activeTabFrame.Visible = false
-            tabButtons[activeTabFrame.Name:gsub("TabFrame","")].button.BackgroundColor3 = Color3.fromRGB(50, 50, 60) -- Deselect color
-            tabButtons[activeTabFrame.Name:gsub("TabFrame","")].button.TextColor3 = Color3.fromRGB(180, 180, 180)
-        end
-        contentFrame.Visible = true
-        activeTabFrame = contentFrame
-        tabButton.BackgroundColor3 = Color3.fromRGB(65, 65, 75) -- Select color
-        tabButton.TextColor3 = Color3.fromRGB(230, 230, 230)
+        activateTab(tabName)
     end)
 end
 
@@ -150,9 +175,10 @@ end
 local function addPlaceholderContent(tabFrame, contentType)
     local yPos = 0.05
     local xPosCol1 = 0.05
-    local xPosCol2 = 0.55
+    local xPosCol2 = 0.55 -- Example for a second column
     local colWidth = 0.4
 
+    -- Placeholder Label + Checkbox
     local label = Instance.new("TextLabel", tabFrame)
     label.Size = UDim2.new(colWidth, 0, 0.05, 0)
     label.Position = UDim2.new(xPosCol1, 0, yPos, 0)
@@ -164,8 +190,11 @@ local function addPlaceholderContent(tabFrame, contentType)
     label.TextXAlignment = Enum.TextXAlignment.Left
 
     local checkbox = Instance.new("TextButton", tabFrame) -- Using button as placeholder checkbox
-    checkbox.Size = UDim2.new(0, 15, 0, 15)
-    checkbox.Position = UDim2.new(xPosCol1 + colWidth - (15/tabFrame.AbsoluteSize.X) - 0.01, 0, yPos, 2) -- Position near label end
+    local checkboxSize = 15
+    checkbox.Size = UDim2.new(0, checkboxSize, 0, checkboxSize)
+    -- Position checkbox to the right of the label text (approximate)
+    local textBounds = game:GetService("TextService"):GetTextSize(label.Text, label.TextSize, label.Font, Vector2.new(tabFrame.AbsoluteSize.X * colWidth, 100))
+    checkbox.Position = UDim2.new(xPosCol1, textBounds.X + 5, yPos, (label.AbsoluteSize.Y - checkboxSize)/2 ) -- Center vertically with label text
     checkbox.Text = "" -- Checkbox visual
     checkbox.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
     checkbox.BorderSizePixel = 1
@@ -177,10 +206,12 @@ local function addPlaceholderContent(tabFrame, contentType)
         checkbox.TextColor3 = Color3.fromRGB(200, 200, 200)
         checkbox.TextSize = 14
         checkbox.Font = Enum.Font.SourceSansBold
+        print(contentType .. " Option 1 Toggled:", isChecked) -- Example action
     end)
 
-    yPos = yPos + 0.08
+    yPos = yPos + 0.08 -- Move down for next element
 
+    -- Placeholder Label + Slider + Value
     local label2 = Instance.new("TextLabel", tabFrame)
     label2.Size = UDim2.new(colWidth, 0, 0.05, 0)
     label2.Position = UDim2.new(xPosCol1, 0, yPos, 0)
@@ -191,16 +222,9 @@ local function addPlaceholderContent(tabFrame, contentType)
     label2.TextSize = 14
     label2.TextXAlignment = Enum.TextXAlignment.Left
 
-    local sliderBg = Instance.new("Frame", tabFrame) -- Placeholder slider background
-    sliderBg.Size = UDim2.new(colWidth, -20, 0, 8)
-    sliderBg.Position = UDim2.new(xPosCol1, 0, yPos + 0.05, 0)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
-    sliderBg.BorderSizePixel = 1
-    sliderBg.BorderColor3 = Color3.fromRGB(80, 80, 90)
-
-    local sliderValueLabel = Instance.new("TextLabel", tabFrame)
+    local sliderValueLabel = Instance.new("TextLabel", tabFrame) -- Value Label on the right
     sliderValueLabel.Size = UDim2.new(0, 30, 0.05, 0)
-    sliderValueLabel.Position = UDim2.new(xPosCol1 + colWidth - (30/tabFrame.AbsoluteSize.X) - 0.01, 0, yPos, 0)
+    sliderValueLabel.Position = UDim2.new(xPosCol1 + colWidth - (30 / tabFrame.AbsoluteSize.X) - 0.01, 0, yPos, 0) -- Position to the right
     sliderValueLabel.Text = "50" -- Example value
     sliderValueLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
     sliderValueLabel.BackgroundTransparency = 1
@@ -208,17 +232,27 @@ local function addPlaceholderContent(tabFrame, contentType)
     sliderValueLabel.TextSize = 14
     sliderValueLabel.TextXAlignment = Enum.TextXAlignment.Right
 
+    local sliderBg = Instance.new("Frame", tabFrame) -- Placeholder slider background below label
+    sliderBg.Size = UDim2.new(colWidth, 0, 0, 8) -- Full width of column, 8 pixels high
+    sliderBg.Position = UDim2.new(xPosCol1, 0, yPos + 0.05, 0) -- Below the label
+    sliderBg.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    sliderBg.BorderSizePixel = 1
+    sliderBg.BorderColor3 = Color3.fromRGB(80, 80, 90)
+
     -- Add similar placeholders for the second column if needed
 end
 
--- Populate placeholder content (do this AFTER tabs are created)
+-- Populate placeholder content (do this AFTER tabs are created and sized)
+-- Use task.wait() briefly to allow UI elements to render and get AbsoluteSize if needed for positioning
+task.wait(0.1)
 if tabButtons["Legit"] then addPlaceholderContent(tabButtons["Legit"].frame, "Aimbot") end
 if tabButtons["Visuals"] then addPlaceholderContent(tabButtons["Visuals"].frame, "ESP") end
 -- Add more population for other tabs as needed
 
--- Activate the first tab by default
-if tabButtons[tabs[1]] then
-    tabButtons[tabs[1]].button:Invoke() -- Simulate click to activate
+
+-- Activate the first tab by default by calling the function
+if tabs[1] and tabButtons[tabs[1]] then
+    activateTab(tabs[1])
 end
 
 
@@ -232,6 +266,7 @@ end
 -- Input Handling
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
     -- If the input is already being used by something else (like chat), ignore it
+    -- Check if the target was a GuiObject in case focus is needed (e.g., TextBoxes)
     if gameProcessedEvent then return end
 
     -- Check if the key pressed is Insert
@@ -267,16 +302,14 @@ titleBar.InputEnded:Connect(function(input)
 	end
 end)
 
-UserInputService.InputChanged:Connect(function(input)
+UserInputService.InputChanged:Connect(function(input) -- Changed from RenderStepped for drag input update
 	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 		dragInput = input
-	end
-end)
-
-RunService.RenderStepped:Connect(function() -- Use RenderStepped for smooth dragging
-	if dragging and dragInput then
-		local delta = dragInput.Position - dragStartPos
-		menuFrame.Position = UDim2.new(frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
-										 frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y)
+        -- Update position only if dragging and dragInput is set
+        if dragging and dragInput and frameStartPos then
+            local delta = dragInput.Position - dragStartPos
+		    menuFrame.Position = UDim2.new(frameStartPos.X.Scale, frameStartPos.X.Offset + delta.X,
+										     frameStartPos.Y.Scale, frameStartPos.Y.Offset + delta.Y)
+        end
 	end
 end)
