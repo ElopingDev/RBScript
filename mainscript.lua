@@ -66,6 +66,16 @@ if currentUniverseId == targetUniverseId then
 	titleLabel.Parent = titleBar
 
 	-- Add other UI elements inside mainFrame here as needed (buttons, etc.)
+	-- For example, a container for buttons:
+	local buttonContainer = Instance.new("ScrollingFrame")
+	buttonContainer.Name = "ButtonContainer"
+	buttonContainer.Size = UDim2.new(1, -10, 1, -35) -- Fill below title bar with padding
+	buttonContainer.Position = UDim2.new(0, 5, 0, 35) -- Position below title bar
+	buttonContainer.BackgroundColor3 = Color3.fromRGB(255, 218, 223) -- Slightly different pink shade
+	buttonContainer.BorderSizePixel = 0
+	buttonContainer.CanvasSize = UDim2.new(0, 0, 0, 0) -- Start with no scrolling needed
+	buttonContainer.ScrollBarThickness = 6
+	buttonContainer.Parent = mainFrame
 
 	-- == Toggle Functionality ==
 	local function toggleMenu()
@@ -92,8 +102,7 @@ else
 	screenGui.Name = "Empty Script"
 
 	-- No mainFrame or toggle functionality needed for the "Empty" version.
-	-- You could add a very minimal indicator if desired, but keeping it empty is fine.
-	-- local statusLabel = Instance.new("TextLabel") ... (optional)
+	-- The ScreenGui itself will be created, but it will be visually empty.
 
 end
 
