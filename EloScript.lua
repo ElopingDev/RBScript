@@ -38,6 +38,12 @@ local isReeling = false
 local reelCoroutine = nil
 local reelEvent = nil
 local instantReelButton = nil
+local teleportDropdownFrame = nil -- Existing location teleport frame -- V--- Added these ---V
+local teleportButton = nil -- Existing location teleport button
+local copyPosButton = nil -- Existing copy position button
+local posTextBox = nil -- Existing position textbox
+local playerTeleportButton = nil -- ADDED: Button for player teleport
+local playerTeleportDropdownFrame = nil -- ADDED: Dropdown for player list -- ^--- Added these ---^
 
 -- == GUI Creation Functions (Basic Black Theme) ==
 
@@ -70,7 +76,7 @@ local function createBasicMenuFrame(guiName)
 	buttonContainer.Name = "ButtonContainer"; buttonContainer.Size = UDim2.new(1, -10, 1, -25) -- Fill below title
 	buttonContainer.Position = UDim2.new(0, 5, 0, 25); buttonContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Match frame background
 	buttonContainer.BorderSizePixel = 0
-	buttonContainer.CanvasSize = UDim2.new(0,0,0,0) -- Start small
+	buttonContainer.CanvasSize = UDim2.new(0,0,0,0) -- Start small, will expand
 	buttonContainer.ScrollBarThickness = 4
 	buttonContainer.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80) -- Grey scrollbar
 	buttonContainer.Parent = frame
@@ -161,6 +167,15 @@ if currentUniverseId == bubbleGumUniverseId then
 	screenGui.Name = "BubbleGum Infinity Script"
 	local buttonContainer
 	mainFrame, buttonContainer = createBasicMenuFrame(screenGui.Name) -- Create the base UI
+
+	-- Dynamically adjust CanvasSize of main ButtonContainer
+	local mainListLayout = buttonContainer:FindFirstChildOfClass("UIListLayout")
+	local function updateMainCanvasSize()
+		local contentHeight = mainListLayout.AbsoluteContentSize.Y
+		buttonContainer.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	end
+	buttonContainer.ChildAdded:Connect(updateMainCanvasSize)
+	buttonContainer.ChildRemoved:Connect(updateMainCanvasSize)
 
 	-- Find BubbleGum RemoteEvent (Still needed for AutoBubble)
 	local remoteEventPath = ReplicatedStorage:FindFirstChild("Shared", true)
@@ -290,6 +305,16 @@ elseif currentUniverseId == fischUniverseId then
 	local buttonContainer
 	mainFrame, buttonContainer = createBasicMenuFrame(screenGui.Name) -- Create the base UI
 
+	-- Dynamically adjust CanvasSize of main ButtonContainer
+	local mainListLayout = buttonContainer:FindFirstChildOfClass("UIListLayout")
+	local function updateMainCanvasSize()
+		local contentHeight = mainListLayout.AbsoluteContentSize.Y
+		buttonContainer.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	end
+	buttonContainer.ChildAdded:Connect(updateMainCanvasSize)
+	buttonContainer.ChildRemoved:Connect(updateMainCanvasSize)
+
+
 	-- Find Fisch RemoteEvent
 	reelEvent = ReplicatedStorage:FindFirstChild("events", true)
 	if reelEvent then reelEvent = reelEvent:FindFirstChild("reelfinished ") end
@@ -322,9 +347,9 @@ elseif currentUniverseId == fischUniverseId then
 		end
 	end)
 
-	teleportButton = createBasicToggleButton("TeleportButton", "Teleport ▼", "Teleport ▲", 2, buttonContainer, function() end) -- LayoutOrder 2, click handled later
+	-- Create Location Teleport Dropdown Elements
+	teleportButton = createBasicToggleButton("TeleportButton", "Locations ▼", "Locations ▲", 2, buttonContainer, function() end) -- LayoutOrder 2, click handled later
 
-	-- ****** MODIFIED SECTION ******
 	teleportDropdownFrame = Instance.new("ScrollingFrame") -- Changed from Frame
 	teleportDropdownFrame.Name = "TeleportDropdown"
 	teleportDropdownFrame.Size = UDim2.new(0.9, 0, 0, 120) -- Keep original visible size
@@ -338,42 +363,42 @@ elseif currentUniverseId == fischUniverseId then
 	teleportDropdownFrame.ScrollBarThickness = 4 -- Added Scrollbar property
 	teleportDropdownFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80) -- Added Scrollbar property
 	teleportDropdownFrame.Parent = buttonContainer
-	-- ****** END MODIFIED SECTION ******
 
 	local dropdownListLayout = Instance.new("UIListLayout")
 	dropdownListLayout.Padding = UDim.new(0, 3); dropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	dropdownListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center; dropdownListLayout.Parent = teleportDropdownFrame
 
-	-- Teleport Locations and Coordinates
-	local teleportLocations = {
-    {"Abyssal Zenith", Vector3.new(-13518.85, -11050.19, 116.59)},
-    {"Ancient Archives", Vector3.new(-3155.02, -754.82, 2193.12)},
-    {"Ancient Isles", Vector3.new(6065.16, 195.18, 301.24)},
-    {"Atlantis", Vector3.new(-4265.13, -603.40, 1830.77)},
-    {"Brine Pool", Vector3.new(-1795.83, -142.69, -3346.37)},
-    {"Calm Zone", Vector3.new(-4341.86, -11173.99, 3713.90)},
-    {"Calm Zone Top", Vector3.new(-4304.27, -11161.20, 1612.15)},
-    {"Challengers Deep", Vector3.new(751.84, -3352.89, -1578.95)},
-    {"Cryogenic Canal", Vector3.new(19834.54, 439.23, 5608.69)},
-    {"Desolate Pocket", Vector3.new(-1655.84, -213.68, -2848.12)},
-    {"Enchant Altar", Vector3.new(1309.00, -805.29, -99.02)},
-    {"Forsaken Shores", Vector3.new(-2494.85, 133.25, 1553.42)},
-    {"Grand Reef", Vector3.new(-3565.90, 148.57, 557.34)},
-    {"Heavens Rod Gate", Vector3.new(1309.00, -805.29, -99.02)},
-    {"Kraken Door", Vector3.new(-4291.88, -848.79, 1748.93)},
-    {"Kraken Pool", Vector3.new(-4311.00, -1002.34, 2010.98)},
-    {"Merlin", Vector3.new(-947.37, 222.28, -987.83)},
-    {"Moosewood", Vector3.new(472.33, 150.94, 255.27)},
-    {"North Mountains", Vector3.new(19535.91, 132.67, 5294.26)},
-    {"Roslit Bay", Vector3.new(-1472.89, 132.53, 699.50)},
-    {"The Depths", Vector3.new(11.46, -706.12, 1230.81)},
-    {"Trident Room", Vector3.new(-1484.95, -225.71, -2377.54)},
-    {"Veil of The Forsaken", Vector3.new(-2362.25, -11184.60, 7070.17)},
-    {"Vertigo", Vector3.new(-102.41, -513.30, 1061.27)},
-    {"Volcanic Vents", Vector3.new(-3350.04, -2027.96, 4078.46)},
-    {"Volcanic Vents Start", Vector3.new(-3402.08, -2263.01, 3826.46)}
-}
+	-- Teleport Locations and Coordinates (Existing)
+	local teleportLocations = { --
+		{"Abyssal Zenith", Vector3.new(-13518.85, -11050.19, 116.59)},
+		{"Ancient Archives", Vector3.new(-3155.02, -754.82, 2193.12)},
+		{"Ancient Isles", Vector3.new(6065.16, 195.18, 301.24)},
+		{"Atlantis", Vector3.new(-4265.13, -603.40, 1830.77)},
+		{"Brine Pool", Vector3.new(-1795.83, -142.69, -3346.37)},
+		{"Calm Zone", Vector3.new(-4341.86, -11173.99, 3713.90)},
+		{"Calm Zone Top", Vector3.new(-4304.27, -11161.20, 1612.15)},
+		{"Challengers Deep", Vector3.new(751.84, -3352.89, -1578.95)},
+		{"Cryogenic Canal", Vector3.new(19834.54, 439.23, 5608.69)},
+		{"Desolate Pocket", Vector3.new(-1655.84, -213.68, -2848.12)},
+		{"Enchant Altar", Vector3.new(1309.00, -805.29, -99.02)},
+		{"Forsaken Shores", Vector3.new(-2494.85, 133.25, 1553.42)},
+		{"Grand Reef", Vector3.new(-3565.90, 148.57, 557.34)},
+		{"Heavens Rod Gate", Vector3.new(1309.00, -805.29, -99.02)},
+		{"Kraken Door", Vector3.new(-4291.88, -848.79, 1748.93)},
+		{"Kraken Pool", Vector3.new(-4311.00, -1002.34, 2010.98)},
+		{"Merlin", Vector3.new(-947.37, 222.28, -987.83)},
+		{"Moosewood", Vector3.new(472.33, 150.94, 255.27)},
+		{"North Mountains", Vector3.new(19535.91, 132.67, 5294.26)},
+		{"Roslit Bay", Vector3.new(-1472.89, 132.53, 699.50)},
+		{"The Depths", Vector3.new(11.46, -706.12, 1230.81)},
+		{"Trident Room", Vector3.new(-1484.95, -225.71, -2377.54)},
+		{"Veil of The Forsaken", Vector3.new(-2362.25, -11184.60, 7070.17)},
+		{"Vertigo", Vector3.new(-102.41, -513.30, 1061.27)},
+		{"Volcanic Vents", Vector3.new(-3350.04, -2027.96, 4078.46)},
+		{"Volcanic Vents Start", Vector3.new(-3402.08, -2263.01, 3826.46)}
+	}
 
+	-- Existing Teleport Function
 	local function doTeleport(locationName, targetPosition)
 		local char = player.Character
 		local rootPart = char and char:FindFirstChild("HumanoidRootPart")
@@ -386,11 +411,10 @@ elseif currentUniverseId == fischUniverseId then
 		end
 	end
 
-	-- Create buttons for each location
+	-- Create buttons for each location (Existing)
 	for i, data in ipairs(teleportLocations) do
 		local locName = data[1]
 		local locPos = data[2] -- Now a Vector3
-		-- Use the action button creator for teleport locations
 		local tpLocButton = createBasicActionButton(locName:gsub("%s+", ""), locName, i, teleportDropdownFrame, function() -- Use index for LayoutOrder
 			doTeleport(locName, locPos) -- Pass Vector3 position
 		end)
@@ -398,14 +422,19 @@ elseif currentUniverseId == fischUniverseId then
 		tpLocButton.TextSize = 12
 	end
 
-	-- Add click logic to the main Teleport button to toggle dropdown
+	-- Add click logic to the main Location Teleport button (Existing)
 	teleportButton.MouseButton1Click:Connect(function()
+		-- ADDED: Hide player teleport dropdown if open
+		if playerTeleportDropdownFrame and playerTeleportDropdownFrame.Visible then
+			playerTeleportDropdownFrame.Visible = false
+			playerTeleportButton.Text = "Player TP ▼"
+		end
 		teleportDropdownFrame.Visible = not teleportDropdownFrame.Visible
-		teleportButton.Text = teleportDropdownFrame.Visible and "Teleport ▲" or "Teleport ▼"
+		teleportButton.Text = teleportDropdownFrame.Visible and "Locations ▲" or "Locations ▼"
 	end)
 
-	-- Create Copy Position Button and TextBox
-	copyPosButton = createBasicActionButton("CopyPosButton", "Copy Position", 4, buttonContainer, function() -- LayoutOrder 4 (after Teleport button and dropdown)
+	-- Create Copy Position Button and TextBox (Existing)
+	copyPosButton = createBasicActionButton("CopyPosButton", "Copy Position", 4, buttonContainer, function() -- LayoutOrder 4
 		local char = player.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		if root and posTextBox then
@@ -420,7 +449,98 @@ elseif currentUniverseId == fischUniverseId then
 		end
 	end)
 
-	posTextBox = createBasicTextBox("PosTextBox", "Click 'Copy Position'", 5, buttonContainer) -- LayoutOrder 5 (after Copy button)
+	posTextBox = createBasicTextBox("PosTextBox", "Click 'Copy Position'", 5, buttonContainer) -- LayoutOrder 5
+
+	-- ****** ADDED: Player Teleport Section ******
+	-- Function to teleport to a specific player
+	local function teleportToPlayer(targetPlayer)
+		local localChar = player.Character
+		local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+		local targetChar = targetPlayer and targetPlayer.Character
+		local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
+
+		if localRoot and targetRoot then
+			print("Teleporting to player:", targetPlayer.Name)
+			localRoot.CFrame = targetRoot.CFrame -- Set local player's CFrame to target's CFrame
+		elseif not localRoot then
+			warn("Cannot teleport: Local HumanoidRootPart not found.")
+		elseif not targetPlayer then
+			warn("Cannot teleport: Target player object is nil.")
+		elseif not targetChar then
+			warn("Cannot teleport: Target player character for", targetPlayer.Name, "not found.")
+		elseif not targetRoot then
+			warn("Cannot teleport: Target HumanoidRootPart for", targetPlayer.Name, "not found.")
+		end
+	end
+
+	-- Function to update the player list in the dropdown
+	local function updatePlayerList(dropdown)
+		-- Clear existing buttons
+		for _, child in ipairs(dropdown:GetChildren()) do
+			if child:IsA("TextButton") then
+				child:Destroy()
+			end
+		end
+
+		local players = Players:GetPlayers()
+		local playerCount = 0
+		for i, p in ipairs(players) do
+			if p ~= player then -- Don't list the local player
+				playerCount += 1
+				local playerButton = createBasicActionButton("Player_" .. p.UserId, p.DisplayName, i, dropdown, function()
+					teleportToPlayer(p)
+					-- Optionally hide dropdown after clicking
+					-- dropdown.Visible = false
+					-- playerTeleportButton.Text = "Player TP ▼"
+				end)
+				playerButton.Size = UDim2.new(1, -10, 0, 20) -- Match location button size
+				playerButton.TextSize = 12
+			end
+		end
+		-- Adjust CanvasSize based on player count
+		dropdown.CanvasSize = UDim2.new(0, 0, 0, math.max(120, playerCount * 23 + 5)) -- Height per button + padding, min height 120
+	end
+
+	-- Create Player Teleport Button
+	playerTeleportButton = createBasicToggleButton("PlayerTeleportButton", "Player TP ▼", "Player TP ▲", 6, buttonContainer, function() end) -- LayoutOrder 6
+
+	-- Create Player Teleport Dropdown Frame (ScrollingFrame)
+	playerTeleportDropdownFrame = Instance.new("ScrollingFrame")
+	playerTeleportDropdownFrame.Name = "PlayerTeleportDropdown"
+	playerTeleportDropdownFrame.Size = UDim2.new(0.9, 0, 0, 120) -- Initial visible size
+	playerTeleportDropdownFrame.CanvasSize = UDim2.new(0, 0, 0, 120) -- Start with base size, updated later
+	playerTeleportDropdownFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	playerTeleportDropdownFrame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+	playerTeleportDropdownFrame.BorderSizePixel = 1
+	playerTeleportDropdownFrame.ClipsDescendants = true
+	playerTeleportDropdownFrame.Visible = false -- Start hidden
+	playerTeleportDropdownFrame.LayoutOrder = 7 -- Place it after the Player TP button
+	playerTeleportDropdownFrame.ScrollBarThickness = 4
+	playerTeleportDropdownFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+	playerTeleportDropdownFrame.Parent = buttonContainer
+
+	local playerDropdownListLayout = Instance.new("UIListLayout")
+	playerDropdownListLayout.Padding = UDim.new(0, 3)
+	playerDropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	playerDropdownListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	playerDropdownListLayout.Parent = playerTeleportDropdownFrame
+
+	-- Add click logic to the main Player Teleport button
+	playerTeleportButton.MouseButton1Click:Connect(function()
+		-- Hide location dropdown if open
+		if teleportDropdownFrame.Visible then
+			teleportDropdownFrame.Visible = false
+			teleportButton.Text = "Locations ▼"
+		end
+
+		local shouldBeVisible = not playerTeleportDropdownFrame.Visible
+		if shouldBeVisible then
+			updatePlayerList(playerTeleportDropdownFrame) -- Update list *before* showing
+		end
+		playerTeleportDropdownFrame.Visible = shouldBeVisible
+		playerTeleportButton.Text = shouldBeVisible and "Player TP ▲" or "Player TP ▼"
+	end)
+	-- ****** END ADDED SECTION ******
 
 	-- Setup menu toggle (Insert Key)
 	setupMenuToggle(mainFrame)
@@ -430,56 +550,79 @@ else
 	print("Universe ID does not match known IDs. Configuring 'Empty Script' GUI.")
 	screenGui.Name = "Empty Script"
 	-- No mainFrame or toggle functionality needed for the "Empty" version.
+	-- Create a basic frame just to show something if needed, but keep it minimal
+	local frame = Instance.new("Frame")
+	frame.Name = "MainFrame"
+	frame.Size = UDim2.new(0, 200, 0, 50)
+	frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	frame.BorderColor3 = Color3.fromRGB(50, 50, 50)
+	frame.BorderSizePixel = 1
+	frame.Visible = true -- Make it visible so user knows the script ran
+	frame.Parent = screenGui
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Name = "TitleLabel"; titleLabel.Size = UDim2.new(1, 0, 1, 0) -- Fill frame
+	titleLabel.Position = UDim2.new(0, 0, 0, 0); titleLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	titleLabel.BorderSizePixel = 0
+	titleLabel.TextColor3 = Color3.fromRGB(180, 180, 180); titleLabel.Font = Enum.Font.SourceSansSemibold
+	titleLabel.Text = screenGui.Name .. " (No features for this game)"; titleLabel.TextSize = 12
+	titleLabel.TextWrapped = true
+	titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	titleLabel.TextYAlignment = Enum.TextYAlignment.Center; titleLabel.Parent = frame
 end
 
 -- == Global Event Connections & Initialization ==
 
--- Stop loops if character dies (relevant if menu is open and loops are running)
-local char = player.Character or player.CharacterAdded:Wait()
-if char then -- Check if character exists initially
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.Died:Connect(function()
-			print("Humanoid Died. Stopping game-specific loops.")
-			isAutoBubbling = false
-			isReeling = false
-			-- Update button states visually if they exist and menu is visible
-			if autoBubbleButton and mainFrame and mainFrame.Visible then
-				autoBubbleButton.Text = "AutoBubble [OFF]"; autoBubbleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			end
-			if instantReelButton and mainFrame and mainFrame.Visible then
-				instantReelButton.Text = "Instant Reel [OFF]"; instantReelButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-			end
-			if posTextBox and mainFrame and mainFrame.Visible then
-				posTextBox.Text = "" -- Clear position on death
-			end
-		end)
+-- Function to safely stop loops and reset buttons
+local function stopLoopsAndResetButtons()
+	isAutoBubbling = false
+	isReeling = false
+	-- Check if UI elements exist before trying to update them
+	if autoBubbleButton then
+		autoBubbleButton.Text = "AutoBubble [OFF]"; autoBubbleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	end
+	if instantReelButton then
+		instantReelButton.Text = "Instant Reel [OFF]"; instantReelButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	end
+	if posTextBox then
+		posTextBox.Text = "" -- Clear position
+	end
+	-- Close dropdowns if open
+	if teleportDropdownFrame and teleportDropdownFrame.Visible then
+		teleportDropdownFrame.Visible = false
+		if teleportButton then teleportButton.Text = "Locations ▼" end -- Reset button text
+	end
+	if playerTeleportDropdownFrame and playerTeleportDropdownFrame.Visible then
+		playerTeleportDropdownFrame.Visible = false
+		if playerTeleportButton then playerTeleportButton.Text = "Player TP ▼" end -- Reset button text
 	end
 end
 
+
+-- Stop loops if character dies
+local function onCharacterDied()
+	print("Humanoid Died. Stopping game-specific loops and resetting buttons.")
+	stopLoopsAndResetButtons()
+end
+
+-- Connect to current character if it exists
+local char = player.Character
+if char then
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.Died:Connect(onCharacterDied)
+	end
+end
+
+-- Connect CharacterAdded for future spawns
 player.CharacterAdded:Connect(function(newCharacter)
 	print("Character Added. Resetting game-specific states.")
-	-- Stop any potentially running loops from previous character
-	isAutoBubbling = false
-	isReeling = false
+	stopLoopsAndResetButtons() -- Ensure loops are stopped from previous life
 
 	-- Connect Died event to the new humanoid
 	local newHumanoid = newCharacter:WaitForChild("Humanoid")
-	newHumanoid.Died:Connect(function()
-		print("New Humanoid Died. Stopping game-specific loops.")
-		isAutoBubbling = false
-		isReeling = false
-		-- Update button states visually if they exist and menu is visible
-		if autoBubbleButton and mainFrame and mainFrame.Visible then
-			autoBubbleButton.Text = "AutoBubble [OFF]"; autoBubbleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-		end
-		if instantReelButton and mainFrame and mainFrame.Visible then
-			instantReelButton.Text = "Instant Reel [OFF]"; instantReelButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-		end
-		if posTextBox and mainFrame and mainFrame.Visible then
-			posTextBox.Text = "" -- Clear position on death
-		end
-	end)
+	newHumanoid.Died:Connect(onCharacterDied)
 end)
 
 
@@ -487,3 +630,8 @@ end)
 screenGui.Parent = playerGui
 print("GUI '" .. screenGui.Name .. "' loaded and parented to PlayerGui.")
 if mainFrame then print("Toggle menu visibility with Insert key.") end
+-- Ensure the main button container canvas size is updated initially if it exists
+if mainFrame and buttonContainer then
+	task.wait(0.1) -- Wait a moment for layout to potentially calculate
+	updateMainCanvasSize()
+end
